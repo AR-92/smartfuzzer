@@ -1,305 +1,413 @@
-![ffuf mascot](_img/ffuf_run_logo_600.png)
-# ffuf - Fuzz Faster U Fool
+# smartfuzzer
 
-A fast web fuzzer written in Go.
+**smartfuzzer** is a fast web fuzzer written in Go. It replaces the `FUZZ` keyword in URLs, headers, or POST data with entries from a wordlist, sends HTTP requests, and reports responses that match your criteria.
 
-- [Installation](https://github.com/ffuf/ffuf#installation)
-- [Example usage](https://github.com/ffuf/ffuf#example-usage)
-    - [Content discovery](https://github.com/ffuf/ffuf#typical-directory-discovery)
-    - [Vhost discovery](https://github.com/ffuf/ffuf#virtual-host-discovery-without-dns-records)
-    - [Parameter fuzzing](https://github.com/ffuf/ffuf#get-parameter-fuzzing)
-    - [POST data fuzzing](https://github.com/ffuf/ffuf#post-data-fuzzing)
-    - [Using external mutator](https://github.com/ffuf/ffuf#using-external-mutator-to-produce-test-cases)
-    - [Configuration files](https://github.com/ffuf/ffuf#configuration-files)
-- [Help](https://github.com/ffuf/ffuf#usage)
-    - [Interactive mode](https://github.com/ffuf/ffuf#interactive-mode)
+Use it for:
+- Directory and file discovery
+- Virtual host enumeration
+- GET/POST parameter fuzzing
+- Content discovery
+- API endpoint brute-forcing
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [How Fuzzing Works](#how-fuzzing-works)
+- [Tutorial](#tutorial)
+  - [Step 1: Directory Discovery](#step-1-directory-discovery)
+  - [Step 2: Filtering Results](#step-2-filtering-results)
+  - [Step 3: Matching Specific Responses](#step-3-matching-specific-responses)
+  - [Step 4: Virtual Host Discovery](#step-4-virtual-host-discovery)
+  - [Step 5: POST Data Fuzzing](#step-5-post-data-fuzzing)
+  - [Step 6: Recursive Scanning](#step-6-recursive-scanning)
+  - [Step 7: Output to File](#step-7-output-to-file)
+  - [Step 8: Interactive Mode](#step-8-interactive-mode)
+  - [Step 9: Rate Limiting and Delays](#step-9-rate-limiting-and-delays)
+  - [Step 10: Configuration Files](#step-10-configuration-files)
+- [Options Reference](#options-reference)
+- [License](#license)
 
 ## Installation
 
-- [Download](https://github.com/ffuf/ffuf/releases/latest) a prebuilt binary from [releases page](https://github.com/ffuf/ffuf/releases/latest), unpack and run!
-
-  _or_
-- If you are on macOS with [homebrew](https://brew.sh), ffuf can be installed with: `brew install ffuf`
-  
-  _or_
-- If you have recent go compiler installed: `go install github.com/ffuf/ffuf/v2@latest` (the same command works for updating)
-  
-  _or_
-- `git clone https://github.com/ffuf/ffuf ; cd ffuf ; go get ; go build`
-
-Ffuf depends on Go 1.16 or greater.
-
-## Example usage
-
-The usage examples below show just the simplest tasks you can accomplish using `ffuf`. 
-
-More elaborate documentation that goes through many features with a lot of examples is
-available in the ffuf wiki at [https://github.com/ffuf/ffuf/wiki](https://github.com/ffuf/ffuf/wiki)
-
-For more extensive documentation, with real life usage examples and tips, be sure to check out the awesome guide:
-"[Everything you need to know about FFUF](https://codingo.io/tools/ffuf/bounty/2020/09/17/everything-you-need-to-know-about-ffuf.html)" by 
-Michael Skelton ([@codingo](https://github.com/codingo)).
-
-You can also practise your ffuf scans against a live host with different lessons and use cases either locally by using the docker container https://github.com/adamtlangley/ffufme or against the live hosted version at http://ffuf.me created by Adam Langley [@adamtlangley](https://twitter.com/adamtlangley).  
-
-### Typical directory discovery
-
-[![asciicast](https://asciinema.org/a/211350.png)](https://asciinema.org/a/211350)
-
-By using the FUZZ keyword at the end of URL (`-u`):
-
-```
-ffuf -w /path/to/wordlist -u https://target/FUZZ
+```bash
+git clone https://github.com/AR-92/smartfuzzer
+cd smartfuzzer
+go build -o smartfuzzer .
 ```
 
-### Virtual host discovery (without DNS records)
+Requires Go 1.17+.
 
-[![asciicast](https://asciinema.org/a/211360.png)](https://asciinema.org/a/211360)
+## Quick Start
 
-Assuming that the default virtualhost response size is 4242 bytes, we can filter out all the responses of that size (`-fs 4242`)while fuzzing the Host - header:
+```bash
+# Basic directory scan
+./smartfuzzer -w wordlist.txt -u https://example.com/FUZZ
 
-```
-ffuf -w /path/to/vhost/wordlist -u https://target -H "Host: FUZZ" -fs 4242
-```
+# With colored output and verbose mode
+./smartfuzzer -w wordlist.txt -u https://example.com/FUZZ -c -v
 
-### GET parameter fuzzing
-
-GET parameter name fuzzing is very similar to directory discovery, and works by defining the `FUZZ` keyword as a part of the URL. This also assumes a response size of 4242 bytes for invalid GET parameter name.
-
-```
-ffuf -w /path/to/paramnames.txt -u https://target/script.php?FUZZ=test_value -fs 4242
+# Filter out 403 responses, only show 200
+./smartfuzzer -w wordlist.txt -u https://example.com/FUZZ -mc 200
 ```
 
-If the parameter name is known, the values can be fuzzed the same way. This example assumes a wrong parameter value returning HTTP response code 401.
+## How Fuzzing Works
+
+smartfuzzer uses the `FUZZ` keyword as a placeholder. Each line from your wordlist replaces `FUZZ` in the request, and the tool reports responses that match your criteria.
 
 ```
-ffuf -w /path/to/values.txt -u https://target/script.php?valid_name=FUZZ -fc 401
+Wordlist: admin, login, dashboard, config, backup
+
+Request:  https://example.com/admin
+Response: 200 OK (matched)
+
+Request:  https://example.com/login
+Response: 200 OK (matched)
+
+Request:  https://example.com/dashboard
+Response: 404 Not Found (filtered out)
 ```
 
-### POST data fuzzing
+You can place `FUZZ` in:
+- The URL path: `-u https://target/FUZZ`
+- A header value: `-H "Host: FUZZ"`
+- POST data: `-d "username=admin&password=FUZZ"`
+- Multiple locations: `-w wordlist1.txt:W1 -w wordlist2.txt:W2 -u https://target/W1?param=W2`
 
-This is a very straightforward operation, again by using the `FUZZ` keyword. This example is fuzzing only part of the POST request. We're again filtering out the 401 responses.
+## Tutorial
 
-```
-ffuf -w /path/to/postdata.txt -X POST -d "username=admin\&password=FUZZ" -u https://target/login.php -fc 401
-```
+### Step 1: Directory Discovery
 
-### Maximum execution time
+The most common use case — find hidden files and directories on a web server.
 
-If you don't want ffuf to run indefinitely, you can use the `-maxtime`. This stops __the entire__ process after a given time (in seconds).
+```bash
+# Get a wordlist first
+curl -sL -o common.txt https://raw.githubusercontent.com/danielmiessler/SecLists/master/Discovery/Web-Content/common.txt
 
-```
-ffuf -w /path/to/wordlist -u https://target/FUZZ -maxtime 60
-```
-
-When working with recursion, you can control the maxtime __per job__ using `-maxtime-job`. This will stop the current job after a given time (in seconds) and continue with the next one. New jobs are created when the recursion functionality detects a subdirectory.
-
-```
-ffuf -w /path/to/wordlist -u https://target/FUZZ -maxtime-job 60 -recursion -recursion-depth 2
+# Run the scan
+./smartfuzzer -w common.txt -u https://example.com/FUZZ
 ```
 
-It is also possible to combine both flags limiting the per job maximum execution time as well as the overall execution time. If you do not use recursion then both flags behave equally.
-
-### Using external mutator to produce test cases
-
-For this example, we'll fuzz JSON data that's sent over POST. [Radamsa](https://gitlab.com/akihe/radamsa) is used as the mutator.
-
-When `--input-cmd` is used, ffuf will display matches as their position. This same position value will be available for the callee as an environment variable `$FFUF_NUM`. We'll use this position value as the seed for the mutator. Files example1.txt and example2.txt contain valid JSON payloads. We are matching all the responses, but filtering out response code `400 - Bad request`:
-
+Output shows the URL, status code, size, and word count for each match:
 ```
-ffuf --input-cmd 'radamsa --seed $FFUF_NUM example1.txt example2.txt' -H "Content-Type: application/json" -X POST -u https://ffuf.io.fi/FUZZ -mc all -fc 400
+admin                   [Status: 200, Size: 5432, Words: 345]
+login                   [Status: 200, Size: 2100, Words: 120]
+backup                  [Status: 403, Size: 300, Words: 45]
+.git                    [Status: 301, Size: 0, Words: 1]
 ```
 
-It of course isn't very efficient to call the mutator for each payload, so we can also pre-generate the payloads, still using [Radamsa](https://gitlab.com/akihe/radamsa) as an example:
+### Step 2: Filtering Results
 
-```
-# Generate 1000 example payloads
-radamsa -n 1000 -o %n.txt example1.txt example2.txt
+Filter out noise to focus on interesting responses.
 
-# This results into files 1.txt ... 1000.txt
-# Now we can just read the payload data in a loop from file for ffuf
+```bash
+# Filter by status code (hide 404s)
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -fc 404
 
-ffuf --input-cmd 'cat $FFUF_NUM.txt' -H "Content-Type: application/json" -X POST -u https://ffuf.io.fi/ -mc all -fc 400
-```
+# Filter by response size (hide default "not found" pages)
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -fs 1234
 
-### Configuration files
+# Filter by word count
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -fw 57
 
-When running ffuf, it first checks if a default configuration file exists. Default path for a `ffufrc` file is
-`$XDG_CONFIG_HOME/ffuf/ffufrc`.  You can configure one or multiple options in this file, and they will be applied on 
-every subsequent ffuf job. An example of ffufrc file can be found 
-[here](https://github.com/ffuf/ffuf/blob/master/ffufrc.example). 
+# Filter by line count
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -fl 15
 
-A more detailed description about configuration file locations can be found in the wiki: 
-[https://github.com/ffuf/ffuf/wiki/Configuration](https://github.com/ffuf/ffuf/wiki/Configuration)
+# Filter by response time
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -ft ">500"
 
-The configuration options provided on the command line override the ones loaded from the default `ffufrc` file.
-Note: this does not apply for CLI flags that can be provided more than once. One of such examples is `-H` (header) flag.
-In this case, the `-H` values provided on the command line will be _appended_ to the ones from the config file instead.
-
-Additionally, in case you wish to use bunch of configuration files for different use cases, you can do this by defining
-the configuration file path using `-config` command line flag that takes the file path to the configuration file as its
-parameter. 
-
-<p align="center">
-  <img width="250" src="_img/ffuf_juggling_250.png">
-</p>
-
-## Usage
-
-To define the test case for ffuf, use the keyword `FUZZ` anywhere in the URL (`-u`), headers (`-H`), or POST data (`-d`).
-
-```
-Fuzz Faster U Fool - v2.1.0
-
-HTTP OPTIONS:
-  -H                  Header `"Name: Value"`, separated by colon. Multiple -H flags are accepted.
-  -X                  HTTP method to use
-  -b                  Cookie data `"NAME1=VALUE1; NAME2=VALUE2"` for copy as curl functionality.
-  -cc                 Client cert for authentication. Client key needs to be defined as well for this to work
-  -ck                 Client key for authentication. Client certificate needs to be defined as well for this to work
-  -d                  POST data
-  -http2              Use HTTP2 protocol (default: false)
-  -ignore-body        Do not fetch the response content. (default: false)
-  -r                  Follow redirects (default: false)
-  -raw                Do not encode URI (default: false)
-  -recursion          Scan recursively. Only FUZZ keyword is supported, and URL (-u) has to end in it. (default: false)
-  -recursion-depth    Maximum recursion depth. (default: 0)
-  -recursion-strategy Recursion strategy: "default" for a redirect based, and "greedy" to recurse on all matches (default: default)
-  -replay-proxy       Replay matched requests using this proxy.
-  -sni                Target TLS SNI, does not support FUZZ keyword
-  -timeout            HTTP request timeout in seconds. (default: 10)
-  -u                  Target URL
-  -x                  Proxy URL (SOCKS5 or HTTP). For example: http://127.0.0.1:8080 or socks5://127.0.0.1:8080
-
-GENERAL OPTIONS:
-  -V                  Show version information. (default: false)
-  -ac                 Automatically calibrate filtering options (default: false)
-  -acc                Custom auto-calibration string. Can be used multiple times. Implies -ac
-  -ach                Per host autocalibration (default: false)
-  -ack                Autocalibration keyword (default: FUZZ)
-  -acs                Custom auto-calibration strategies. Can be used multiple times. Implies -ac
-  -c                  Colorize output. (default: false)
-  -config             Load configuration from a file
-  -json               JSON output, printing newline-delimited JSON records (default: false)
-  -maxtime            Maximum running time in seconds for entire process. (default: 0)
-  -maxtime-job        Maximum running time in seconds per job. (default: 0)
-  -noninteractive     Disable the interactive console functionality (default: false)
-  -p                  Seconds of `delay` between requests, or a range of random delay. For example "0.1" or "0.1-2.0"
-  -rate               Rate of requests per second (default: 0)
-  -s                  Do not print additional information (silent mode) (default: false)
-  -sa                 Stop on all error cases. Implies -sf and -se. (default: false)
-  -scraperfile        Custom scraper file path
-  -scrapers           Active scraper groups (default: all)
-  -se                 Stop on spurious errors (default: false)
-  -search             Search for a FFUFHASH payload from ffuf history
-  -sf                 Stop when > 95% of responses return 403 Forbidden (default: false)
-  -t                  Number of concurrent threads. (default: 40)
-  -v                  Verbose output, printing full URL and redirect location (if any) with the results. (default: false)
-
-MATCHER OPTIONS:
-  -mc                 Match HTTP status codes, or "all" for everything. (default: 200-299,301,302,307,401,403,405,500)
-  -ml                 Match amount of lines in response
-  -mmode              Matcher set operator. Either of: and, or (default: or)
-  -mr                 Match regexp
-  -ms                 Match HTTP response size
-  -mt                 Match how many milliseconds to the first response byte, either greater or less than. EG: >100 or <100
-  -mw                 Match amount of words in response
-
-FILTER OPTIONS:
-  -fc                 Filter HTTP status codes from response. Comma separated list of codes and ranges
-  -fl                 Filter by amount of lines in response. Comma separated list of line counts and ranges
-  -fmode              Filter set operator. Either of: and, or (default: or)
-  -fr                 Filter regexp
-  -fs                 Filter HTTP response size. Comma separated list of sizes and ranges
-  -ft                 Filter by number of milliseconds to the first response byte, either greater or less than. EG: >100 or <100
-  -fw                 Filter by amount of words in response. Comma separated list of word counts and ranges
-
-INPUT OPTIONS:
-  -D                  DirSearch wordlist compatibility mode. Used in conjunction with -e flag. (default: false)
-  -e                  Comma separated list of extensions. Extends FUZZ keyword.
-  -enc                Encoders for keywords, eg. 'FUZZ:urlencode b64encode'
-  -ic                 Ignore wordlist comments (default: false)
-  -input-cmd          Command producing the input. --input-num is required when using this input method. Overrides -w.
-  -input-num          Number of inputs to test. Used in conjunction with --input-cmd. (default: 100)
-  -input-shell        Shell to be used for running command
-  -mode               Multi-wordlist operation mode. Available modes: clusterbomb, pitchfork, sniper (default: clusterbomb)
-  -request            File containing the raw http request
-  -request-proto      Protocol to use along with raw request (default: https)
-  -w                  Wordlist file path and (optional) keyword separated by colon. eg. '/path/to/wordlist:KEYWORD'
-
-OUTPUT OPTIONS:
-  -debug-log          Write all of the internal logging to the specified file.
-  -o                  Write output to file
-  -od                 Directory path to store matched results to.
-  -of                 Output file format. Available formats: json, ejson, html, md, csv, ecsv (or, 'all' for all formats) (default: json)
-  -or                 Don't create the output file if we don't have results (default: false)
-
-EXAMPLE USAGE:
-  Fuzz file paths from wordlist.txt, match all responses but filter out those with content-size 42.
-  Colored, verbose output.
-    ffuf -w wordlist.txt -u https://example.org/FUZZ -mc all -fs 42 -c -v
-
-  Fuzz Host-header, match HTTP 200 responses.
-    ffuf -w hosts.txt -u https://example.org/ -H "Host: FUZZ" -mc 200
-
-  Fuzz POST JSON data. Match all responses not containing text "error".
-    ffuf -w entries.txt -u https://example.org/ -X POST -H "Content-Type: application/json" \
-      -d '{"name": "FUZZ", "anotherkey": "anothervalue"}' -fr "error"
-
-  Fuzz multiple locations. Match only responses reflecting the value of "VAL" keyword. Colored.
-    ffuf -w params.txt:PARAM -w values.txt:VAL -u https://example.org/?PARAM=VAL -mr "VAL" -c
-
-  More information and examples: https://github.com/ffuf/ffuf
+# Combine multiple filters
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -fc 404,403 -fs 1234
 ```
 
-### Interactive mode
+### Step 3: Matching Specific Responses
 
-By pressing `ENTER` during ffuf execution, the process is paused and user is dropped to a shell-like interactive mode:
+Instead of filtering out, explicitly match only certain responses.
+
+```bash
+# Match only 200 OK
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -mc 200
+
+# Match multiple status codes
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -mc 200,301,302
+
+# Match all status codes
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -mc all
+
+# Match by size
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -ms 5432
+
+# Match by regex in response body
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -mr "admin|dashboard"
+
+# Match by word count
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -mw 345
+
+# Combine matchers with AND mode
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -mc 200 -ms 5432 -mmode and
 ```
+
+### Step 4: Virtual Host Discovery
+
+Find subdomains/virtual hosts by fuzzing the `Host` header.
+
+```bash
+# Create a wordlist of subdomains
+echo -e "admin\ndev\nstaging\napi\nmail\nwww\n" > vhosts.txt
+
+# Scan with host header fuzzing
+./smartfuzzer -w vhosts.txt -u https://example.com -H "Host: FUZZ.example.com" -fs 4242
+```
+
+Filter by the default virtual host's response size to reveal hidden vhosts.
+
+### Step 5: POST Data Fuzzing
+
+Fuzz login forms, API endpoints, or any POST data.
+
+```bash
+# Fuzz password field
+./smartfuzzer -w passwords.txt -X POST -d "username=admin&password=FUZZ" -u https://example.com/login -fc 401
+
+# Fuzz JSON body
+./smartfuzzer -w payloads.txt -X POST -H "Content-Type: application/json" -d '{"user":"FUZZ","pass":"test"}' -u https://example.com/api/login -mc 200
+
+# Fuzz multiple parameters at once
+./smartfuzzer -w users.txt:USER -w passes.txt:PASS -X POST -d "username=USER&password=PASS" -u https://example.com/login -fc 401
+```
+
+### Step 6: Recursive Scanning
+
+Automatically discover directories and then scan inside them.
+
+```bash
+# Recursive scan with depth limit
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -recursion -recursion-depth 2
+
+# Recursive scan with max time per job
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -recursion -recursion-depth 3 -maxtime-job 120
+
+# Greedy recursion (recurse on all matches, not just redirects)
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -recursion -recursion-strategy greedy
+```
+
+### Step 7: Output to File
+
+Save results in various formats for analysis.
+
+```bash
+# JSON output
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -o results.json -of json
+
+# HTML report
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -o report.html -of html
+
+# Markdown
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -o results.md -of md
+
+# CSV
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -o results.csv -of csv
+
+# All formats at once
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -o results -of all
+
+# Save matched results to a directory
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -od ./matches
+```
+
+### Step 8: Interactive Mode
+
+Press `ENTER` during a running scan to pause and modify filters in real time.
+
+```bash
+# Start a scan
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -c
+
+# Press ENTER when you see too much noise
+# You'll see:
 entering interactive mode
-type "help" for a list of commands, or ENTER to resume.
-> help
+>
 
-available commands:
- afc  [value]             - append to status code filter 
- fc   [value]             - (re)configure status code filter 
- afl  [value]             - append to line count filter 
- fl   [value]             - (re)configure line count filter 
- afw  [value]             - append to word count filter 
- fw   [value]             - (re)configure word count filter 
- afs  [value]             - append to size filter 
- fs   [value]             - (re)configure size filter 
- aft  [value]             - append to time filter 
- ft   [value]             - (re)configure time filter 
- rate [value]             - adjust rate of requests per second (active: 0)
- queueshow                - show job queue
- queuedel [number]        - delete a job in the queue
- queueskip                - advance to the next queued job
- restart                  - restart and resume the current ffuf job
- resume                   - resume current ffuf job (or: ENTER) 
- show                     - show results for the current job
- savejson [filename]      - save current matches to a file
- help                     - you are looking at it
-> 
+# Add a filter to hide 403s
+> fc 403
+
+# Check your current results
+> show
+
+# Resume scanning
+> resume
 ```
 
-in this mode, filters can be reconfigured, queue managed and the current state saved to disk.
+Available interactive commands:
 
-When (re)configuring the filters, they get applied posthumously and all the false positive matches from memory that
-would have been filtered out by the newly added filters get deleted.
+| Command | Description |
+|---------|-------------|
+| `fc [value]` | (re)configure status code filter |
+| `afc [value]` | append to status code filter |
+| `fl [value]` | (re)configure line count filter |
+| `afl [value]` | append to line count filter |
+| `fw [value]` | (re)configure word count filter |
+| `afw [value]` | append to word count filter |
+| `fs [value]` | (re)configure size filter |
+| `afs [value]` | append to size filter |
+| `ft [value]` | (re)configure time filter |
+| `aft [value]` | append to time filter |
+| `rate [value]` | adjust requests per second |
+| `queueshow` | show job queue |
+| `queuedel [n]` | delete a job from queue |
+| `queueskip` | skip to next queued job |
+| `restart` | restart current job from beginning |
+| `resume` | resume current job (or ENTER) |
+| `show` | display current matches |
+| `savejson [file]` | save matches to JSON file |
+| `help` | show help |
 
-The new state of matches can be printed out with a command `show` that will print out all the matches as like they 
-would have been found by `ffuf`.
+### Step 9: Rate Limiting and Delays
 
-As "negative" matches are not stored to memory, relaxing the filters cannot unfortunately bring back the lost matches.
-For this kind of scenario, the user is able to use the command `restart`, which resets the state and starts the current
-job from the beginning.
+Avoid overwhelming the target or getting blocked.
 
-<p align="center">
-  <img width="250" src="_img/ffuf_waving_250.png">
-</p>
+```bash
+# Limit to 100 requests per second
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -rate 100
+
+# Add a fixed 0.5 second delay between requests
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -p 0.5
+
+# Add a random delay between 0.1 and 1.0 seconds
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -p 0.1-1.0
+
+# Limit total scan time to 5 minutes
+./smartfuzzer -w common.txt -u https://example.com/FUZZ -maxtime 300
+```
+
+### Step 10: Configuration Files
+
+Create a default config file to avoid typing the same flags every time.
+
+```bash
+# Create config directory
+mkdir -p ~/.config/smartfuzzer
+
+# Create smartfuzzerrc
+cat > ~/.config/smartfuzzer/smartfuzzerrc << 'EOF'
+# Default options applied to every run
+-c                    # colored output
+-t 80                 # 80 threads
+-rate 200             # 200 req/s max
+-timeout 10           # 10 second timeout
+EOF
+
+# Now you can run with fewer flags:
+./smartfuzzer -w common.txt -u https://example.com/FUZZ
+
+# Use a custom config file
+./smartfuzzer -config ./myconfig.conf -w common.txt -u https://example.com/FUZZ
+```
+
+## Options Reference
+
+### HTTP Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-H` | Header `"Name: Value"`, multiple accepted | |
+| `-X` | HTTP method | GET |
+| `-b` | Cookie data `"NAME1=VALUE1; NAME2=VALUE2"` | |
+| `-cc` | Client certificate path | |
+| `-ck` | Client key path | |
+| `-d` | POST data | |
+| `-http2` | Use HTTP2 | false |
+| `-ignore-body` | Don't fetch response body | false |
+| `-r` | Follow redirects | false |
+| `-raw` | Don't encode URI | false |
+| `-recursion` | Scan recursively | false |
+| `-recursion-depth` | Max recursion depth | 0 |
+| `-recursion-strategy` | `default` or `greedy` | default |
+| `-replay-proxy` | Proxy for replayed requests | |
+| `-sni` | TLS SNI value | |
+| `-timeout` | Request timeout in seconds | 10 |
+| `-u` | Target URL | |
+| `-x` | Proxy URL (HTTP/SOCKS5) | |
+
+### General Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-V` | Show version | false |
+| `-ac` | Auto-calibrate filter | false |
+| `-acc` | Custom auto-calibration string | |
+| `-ach` | Per-host auto-calibration | false |
+| `-ack` | Auto-calibration keyword | FUZZ |
+| `-acs` | Custom auto-calibration strategy | |
+| `-c` | Colorize output | false |
+| `-config` | Config file path | |
+| `-json` | JSON output (NDJSON) | false |
+| `-maxtime` | Max total runtime in seconds | 0 |
+| `-maxtime-job` | Max job runtime in seconds | 0 |
+| `-noninteractive` | Disable interactive mode | false |
+| `-p` | Delay (fixed or range) | |
+| `-rate` | Requests per second | 0 |
+| `-s` | Silent mode | false |
+| `-sa` | Stop on all errors | false |
+| `-scraperfile` | Custom scraper file | |
+| `-scrapers` | Active scraper groups | all |
+| `-se` | Stop on spurious errors | false |
+| `-search` | Search for FFUFHASH in history | |
+| `-sf` | Stop on 95%+ 403s | false |
+| `-t` | Number of threads | 40 |
+| `-v` | Verbose output | false |
+
+### Matcher Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-mc` | Match status codes | 200-299,301,302,307,401,403,405,500 |
+| `-ml` | Match line count | |
+| `-mmode` | Matcher operator: `and`/`or` | or |
+| `-mr` | Match regex | |
+| `-ms` | Match response size | |
+| `-mt` | Match response time (ms) | |
+| `-mw` | Match word count | |
+
+### Filter Options
+
+| Flag | Description |
+|------|-------------|
+| `-fc` | Filter status codes |
+| `-fl` | Filter line count |
+| `-fmode` | Filter operator: `and`/`or` (default: or) |
+| `-fr` | Filter regex |
+| `-fs` | Filter response size |
+| `-ft` | Filter response time (ms) |
+| `-fw` | Filter word count |
+
+### Input Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-D` | DirSearch compatibility | false |
+| `-e` | File extensions (comma separated) | |
+| `-enc` | Encoders for keywords | |
+| `-ic` | Ignore wordlist comments | false |
+| `-input-cmd` | Command to produce input | |
+| `-input-num` | Number of inputs | 100 |
+| `-input-shell` | Shell for input command | |
+| `-mode` | Multi-wordlist mode: `clusterbomb`, `pitchfork`, `sniper` | clusterbomb |
+| `-request` | Raw HTTP request file | |
+| `-request-proto` | Protocol for raw request | https |
+| `-w` | Wordlist file (path:KEYWORD) | |
+
+### Output Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-audit-log` | Audit log file | |
+| `-debug-log` | Debug log file | |
+| `-o` | Output file | |
+| `-od` | Output directory for matches | |
+| `-of` | Output format: json, ejson, html, md, csv, ecsv | json |
+| `-or` | Skip output file if no results | false |
 
 ## License
 
-ffuf is released under MIT license. See [LICENSE](https://github.com/ffuf/ffuf/blob/master/LICENSE).
+MIT
