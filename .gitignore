@@ -1,2 +1,4 @@
 /ffuf
+/smartfuzzer
+output.txt
 .idea
