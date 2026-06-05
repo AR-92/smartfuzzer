@@ -147,5 +147,5 @@ func Usage() {
 	fmt.Printf("  Fuzz multiple locations. Match only responses reflecting the value of \"VAL\" keyword. Colored.\n")
 	fmt.Printf("    smartfuzzer -w params.txt:PARAM -w values.txt:VAL -u https://example.org/?PARAM=VAL -mr \"VAL\" -c\n\n")
 
-	fmt.Printf("  More information and examples: https://github.com/ffuf/smartfuzzer\n\n")
+	fmt.Printf("  More information and examples: https://github.com/AR-92/smartfuzzer\n\n")
 }
