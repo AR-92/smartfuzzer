@@ -10,7 +10,7 @@ var (
 	VERSION = "2.1.0"
 	//VERSION_APPENDIX holds additional version definition
 	VERSION_APPENDIX = "-dev"
-	CONFIGDIR        = filepath.Join(xdg.ConfigHome, "ffuf")
+	CONFIGDIR        = filepath.Join(xdg.ConfigHome, "smartfuzzer")
 	HISTORYDIR       = filepath.Join(CONFIGDIR, "history")
 	SCRAPERDIR       = filepath.Join(CONFIGDIR, "scraper")
 	AUTOCALIBDIR     = filepath.Join(CONFIGDIR, "autocalibration")

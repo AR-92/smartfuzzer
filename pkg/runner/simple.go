@@ -17,7 +17,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/ffuf/smartfuzzer/v2/pkg/ffuf"
 
 	"github.com/andybalholm/brotli"
 )
@@ -127,7 +127,7 @@ func (r *SimpleRunner) Execute(req *ffuf.Request) (ffuf.Response, error) {
 
 	// set default User-Agent header if not present
 	if _, ok := req.Headers["User-Agent"]; !ok {
-		req.Headers["User-Agent"] = fmt.Sprintf("%s v%s", "Fuzz Faster U Fool", ffuf.Version())
+		req.Headers["User-Agent"] = fmt.Sprintf("%s v%s", "SmartFuzzer", ffuf.Version())
 	}
 
 	// Handle Go http.Request special cases
@@ -225,7 +225,7 @@ func (r *SimpleRunner) Dump(req *ffuf.Request) ([]byte, error) {
 
 	// set default User-Agent header if not present
 	if _, ok := req.Headers["User-Agent"]; !ok {
-		req.Headers["User-Agent"] = fmt.Sprintf("%s v%s", "Fuzz Faster U Fool", ffuf.Version())
+		req.Headers["User-Agent"] = fmt.Sprintf("%s v%s", "SmartFuzzer", ffuf.Version())
 	}
 
 	// Handle Go http.Request special cases

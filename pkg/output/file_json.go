@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/ffuf/smartfuzzer/v2/pkg/ffuf"
 )
 
 type ejsonFileOutput struct {

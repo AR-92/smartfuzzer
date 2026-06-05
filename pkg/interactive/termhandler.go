@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
+	"github.com/ffuf/smartfuzzer/v2/pkg/ffuf"
 )
 
 type interactive struct {
@@ -55,7 +55,7 @@ func (i *interactive) handleInput(in []byte) {
 		case "restart":
 			i.Job.Reset(false)
 			i.paused = false
-			i.Job.Output.Info("Restarting the current ffuf job!")
+			i.Job.Output.Info("Restarting the current smartfuzzer job!")
 			i.Job.Resume()
 		case "show":
 			for _, r := range i.Job.Output.GetCurrentResults() {
@@ -309,8 +309,8 @@ available commands:
  queueshow                - show job queue
  queuedel [number]        - delete a job in the queue
  queueskip                - advance to the next queued job
- restart                  - restart and resume the current ffuf job
- resume                   - resume current ffuf job (or: ENTER) 
+ restart                  - restart and resume the current smartfuzzer job
+ resume                   - resume current smartfuzzer job (or: ENTER) 
  show                     - show results for the current job
  savejson [filename]      - save current matches to a file
  help                     - you are looking at it

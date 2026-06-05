@@ -770,11 +770,11 @@ func ReadConfig(configFile string) (*ConfigOptions, error) {
 func ReadDefaultConfig() (*ConfigOptions, error) {
 	// Try to create configuration directory, ignore the potential error
 	_ = CheckOrCreateConfigDir()
-	conffile := filepath.Join(CONFIGDIR, "ffufrc")
+	conffile := filepath.Join(CONFIGDIR, "smartfuzzerrc")
 	if !FileExists(conffile) {
 		userhome, err := os.UserHomeDir()
 		if err == nil {
-			conffile = filepath.Join(userhome, ".ffufrc")
+			conffile = filepath.Join(userhome, ".smartfuzzerrc")
 		}
 	}
 	return ReadConfig(conffile)

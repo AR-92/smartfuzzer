@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ffuf/ffuf/v2/pkg/ffuf"
-	"github.com/ffuf/ffuf/v2/pkg/filter"
-	"github.com/ffuf/ffuf/v2/pkg/input"
-	"github.com/ffuf/ffuf/v2/pkg/interactive"
-	"github.com/ffuf/ffuf/v2/pkg/output"
-	"github.com/ffuf/ffuf/v2/pkg/runner"
-	"github.com/ffuf/ffuf/v2/pkg/scraper"
+	"github.com/ffuf/smartfuzzer/v2/pkg/ffuf"
+	"github.com/ffuf/smartfuzzer/v2/pkg/filter"
+	"github.com/ffuf/smartfuzzer/v2/pkg/input"
+	"github.com/ffuf/smartfuzzer/v2/pkg/interactive"
+	"github.com/ffuf/smartfuzzer/v2/pkg/output"
+	"github.com/ffuf/smartfuzzer/v2/pkg/runner"
+	"github.com/ffuf/smartfuzzer/v2/pkg/scraper"
 )
 
 type multiStringFlag []string
@@ -104,7 +104,7 @@ func ParseFlags(opts *ffuf.ConfigOptions) *ffuf.ConfigOptions {
 	flag.StringVar(&opts.Filter.Time, "ft", opts.Filter.Time, "Filter by number of milliseconds to the first response byte, either greater or less than. EG: >100 or <100")
 	flag.StringVar(&opts.Filter.Words, "fw", opts.Filter.Words, "Filter by amount of words in response. Comma separated list of word counts and ranges")
 	flag.StringVar(&opts.General.Delay, "p", opts.General.Delay, "Seconds of `delay` between requests, or a range of random delay. For example \"0.1\" or \"0.1-2.0\"")
-	flag.StringVar(&opts.General.Searchhash, "search", opts.General.Searchhash, "Search for a FFUFHASH payload from ffuf history")
+	flag.StringVar(&opts.General.Searchhash, "search", opts.General.Searchhash, "Search for a FFUFHASH payload from smartfuzzer history")
 	flag.StringVar(&opts.HTTP.Data, "d", opts.HTTP.Data, "POST data")
 	flag.StringVar(&opts.HTTP.Data, "data", opts.HTTP.Data, "POST data (alias of -d)")
 	flag.StringVar(&opts.HTTP.Data, "data-ascii", opts.HTTP.Data, "POST data (alias of -d)")
@@ -199,7 +199,7 @@ func main() {
 	}
 
 	if opts.General.ShowVersion {
-		fmt.Printf("ffuf version: %s\n", ffuf.Version())
+		fmt.Printf("smartfuzzer version: %s\n", ffuf.Version())
 		os.Exit(0)
 	}
 	if len(opts.Output.DebugLog) != 0 {
@@ -221,9 +221,8 @@ func main() {
 	if opts.General.ConfigFile != "" {
 		opts, err = ffuf.ReadConfig(opts.General.ConfigFile)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Encoutered error(s): %s\n", err)
 			Usage()
-			fmt.Fprintf(os.Stderr, "Encoutered error(s): %s\n", err)
+			fmt.Fprintf(os.Stderr, "\nEncountered error(s): %s\n", err)
 			os.Exit(1)
 		}
 		// Reset the flag package state
@@ -235,9 +234,8 @@ func main() {
 	// Set up Config struct
 	conf, err := ffuf.ConfigFromOptions(opts, ctx, cancel)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Encountered error(s): %s\n", err)
 		Usage()
-		fmt.Fprintf(os.Stderr, "Encountered error(s): %s\n", err)
+		fmt.Fprintf(os.Stderr, "\nEncountered error(s): %s\n", err)
 		os.Exit(1)
 	}
 
@@ -431,6 +429,6 @@ func printSearchResults(conf *ffuf.Config, pos int, exectime time.Time, hash str
 	ffufreq, _ := dummyrunner.Prepare(inputdata, &basereq)
 	rawreq, _ := dummyrunner.Dump(&ffufreq)
 	fmt.Printf("-------------------------------------------\n")
-	fmt.Printf("ffuf job started at: %s\n\n", exectime.Format(time.RFC3339))
+	fmt.Printf("smartfuzzer job started at: %s\n\n", exectime.Format(time.RFC3339))
 	fmt.Printf("%s\n", string(rawreq))
 }

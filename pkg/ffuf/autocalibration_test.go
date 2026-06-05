@@ -30,7 +30,7 @@ func (o *NullOutput) Cycle()                                 {}
 
 func TestAutoCalibrationStrings(t *testing.T) {
 	// Create a temporary directory for the test
-	tmpDir, err := os.MkdirTemp("", "ffuf-test")
+	tmpDir, err := os.MkdirTemp("", "smartfuzzer-test")
 	AUTOCALIBDIR = tmpDir
 	if err != nil {
 		t.Fatalf("Failed to create temporary directory: %v", err)
